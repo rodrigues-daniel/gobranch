@@ -1,0 +1,19 @@
+# Arquivos binários
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Arquivos de backup
+*~
+*.bak
+*.swp
+
+# Arquivos de log
+*.log
+
+# Diretórios
+.idea/
+.vscode/
+/bin/
+/vendor/
