@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
@@ -32,7 +34,7 @@ func main() {
 		return
 	}
 
-	for i := 2; i <= 5; i++ {
+	for i := 2; i <= 3; i++ {
 		destino := fmt.Sprintf("%s-%d", origem, i)
 		err := copiarPasta(origem, destino)
 		if err != nil {
@@ -40,6 +42,11 @@ func main() {
 			break
 		}
 		fmt.Printf("Pasta copiada e renomeada para %s\n", destino)
+
+		err = substituirNomes(destino, origem, destino)
+		if err != nil {
+			fmt.Printf("Erro ao substituir nomes nos arquivos: %v\n", err)
+		}
 	}
 
 	// Obter o diretório atual
@@ -98,4 +105,66 @@ func copiarPasta(origem, destino string) error {
 	})
 
 	return err
+}
+
+func substituirNomes(pasta, antigoNome, novoNome string) error {
+	// Lista de arquivos onde faremos as substituições
+	arquivos := []string{"pom.xml", "sonar-project.properties", "Jenkinsfile"}
+
+	// Percorre os arquivos na pasta
+	for _, nomeArquivo := range arquivos {
+		caminhoArquivo := filepath.Join(pasta, nomeArquivo)
+
+		// Verifica se o arquivo existe
+		_, err := os.Stat(caminhoArquivo)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Arquivo não existe, passa para o próximo
+				continue
+			}
+			return err
+		}
+
+		// Abre o arquivo para leitura e cria um temporário para escrita
+		arquivoOrigem, err := os.Open(caminhoArquivo)
+		if err != nil {
+			return err
+		}
+		defer arquivoOrigem.Close()
+
+		arquivoTemp, err := os.Create(caminhoArquivo + ".temp")
+		if err != nil {
+			return err
+		}
+		defer arquivoTemp.Close()
+
+		// Faz a substituição linha por linha
+		scanner := bufio.NewScanner(arquivoOrigem)
+		for scanner.Scan() {
+			linha := scanner.Text()
+			linha = strings.ReplaceAll(linha, antigoNome, novoNome)
+			fmt.Fprintln(arquivoTemp, linha)
+		}
+
+		// Verifica se houve algum erro durante a leitura do arquivo original
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+
+		// Fecha os arquivos
+		arquivoOrigem.Close()
+		arquivoTemp.Close()
+
+		// Remove o arquivo original e renomeia o temporário para o nome original
+		err = os.Remove(caminhoArquivo)
+		if err != nil {
+			return err
+		}
+		err = os.Rename(caminhoArquivo+".temp", caminhoArquivo)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
